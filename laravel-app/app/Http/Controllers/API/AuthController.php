@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -32,16 +33,16 @@ class AuthController extends Controller
     function signin(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'email' => 'required|email|exists:users,email',
             'password' => 'required|string|min:6|max:10'
         ]);
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response([
-                'message' => 'Invalid credentials.'
-            ], 401);
+        if (!Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => 'Password does not match.',
+            ]);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -66,6 +67,14 @@ class AuthController extends Controller
 
         return response([
             'message' => 'User signed out.'
+        ], 200);
+    }
+
+    function verify(Request $request)
+    {
+        return response([
+            'message' => 'Token is valid.',
+            'user' => $request->user()
         ], 200);
     }
 }
